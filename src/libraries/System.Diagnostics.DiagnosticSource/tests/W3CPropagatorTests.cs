@@ -278,6 +278,32 @@ namespace System.Diagnostics.Tests
         }
 
         [Theory]
+        [InlineData("%E2%41%41", "\uFFFDAA")]
+        [InlineData("%ED%20%80", "\uFFFD \uFFFD")]
+        [InlineData("%E2%82%41", "\uFFFD\uFFFDA")]
+        [InlineData("%E0%FF%80", "\uFFFD\uFFFD\uFFFD")]
+        [InlineData("%E2%C2%A2", "\uFFFD\u00A2")]
+        [InlineData("%E0%A0%80", "\u0800")]
+        [InlineData("%ED%9F%BF", "\uD7FF")]
+        public void TestDecodingUtf8Baggage(string encodedValue, string expectedValue)
+        {
+            foreach (string headerName in new[] { PropagatorTests.Baggage, PropagatorTests.CorrelationContext })
+            {
+                IEnumerable<KeyValuePair<string, string?>>? baggage =
+                    DecodeBaggage($"first=ok,key=before{encodedValue}after,last=ok", headerName);
+
+                Assert.Equal(
+                    new[]
+                    {
+                        new KeyValuePair<string, string?>("last", "ok"),
+                        new KeyValuePair<string, string?>("key", $"before{expectedValue}after"),
+                        new KeyValuePair<string, string?>("first", "ok"),
+                    },
+                    baggage);
+            }
+        }
+
+        [Theory]
         [InlineData("invalid")] // Missing equals sign
         [InlineData("=value")] // Empty key
         [InlineData("key=")] // Empty value (allowed)
@@ -536,7 +562,7 @@ namespace System.Diagnostics.Tests
             }
         }
 
-        private static IEnumerable<KeyValuePair<string, string?>> DecodeBaggage(string value)
+        private static IEnumerable<KeyValuePair<string, string?>> DecodeBaggage(string value, string headerName = PropagatorTests.Baggage)
         {
             return W3CPropagatorTests.s_w3cPropagator.ExtractBaggage(null,
                 (object carrier, string fieldName, out string? fieldValue, out IEnumerable<string>? fieldValues) =>
@@ -545,7 +571,7 @@ namespace System.Diagnostics.Tests
                     fieldValue = null;
                     fieldValues = null;
 
-                    if (fieldName == PropagatorTests.Baggage)
+                    if (fieldName == headerName)
                     {
                         fieldValue = value;
                     }

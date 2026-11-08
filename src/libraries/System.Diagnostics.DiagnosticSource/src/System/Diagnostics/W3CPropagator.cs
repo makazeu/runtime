@@ -387,6 +387,7 @@ namespace System.Diagnostics
                         valueSpan[i + 6] != Percent ||
                         !TryDecodeEscapedByte(valueSpan.Slice(i + 3), out byte b1) ||
                         !TryDecodeEscapedByte(valueSpan.Slice(i + 6), out byte b2) ||
+                        (b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 ||
                         (b0 == 0xE0 && b1 < 0xA0) || (b0 == 0xED && b1 >= 0xA0))
                     {
                         // Malformed utf-8 sequence. emit U+FFFD and continue
